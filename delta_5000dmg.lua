@@ -1,13 +1,12 @@
--- Минималистичный GUI для Delta Roblox Jurassic Blocky
 local Player = game:GetService("Players").LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 
--- Создаем интерфейс
+-- Интерфейс
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local ToggleBtn = Instance.new("TextButton")
 
-ScreenGui.Name = "CompactDamageGUI"
+ScreenGui.Name = "DamageGUI_PC"
 ScreenGui.Parent = CoreGui
 
 -- Основной фрейм
@@ -20,66 +19,46 @@ MainFrame.Size = UDim2.new(0, 100, 0, 50)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
--- Кнопка включения/выключения
+-- Кнопка
 ToggleBtn.Name = "ToggleBtn"
 ToggleBtn.Parent = MainFrame
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 ToggleBtn.Size = UDim2.new(0.9, 0, 0.8, 0)
 ToggleBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-ToggleBtn.Text = "ВЫКЛ"
+ToggleBtn.Text = "OFF"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 ToggleBtn.TextSize = 14
-ToggleBtn.Font = Enum.Font.SourceSansBold
 
--- Логика скрипта
+-- Логика урона
 local isActive = false
+local remotePath = "Path.To.Game.Remote" -- Замените на реальный путь
 
-local function dealDamage(target)
+local function dealRealDamage(target)
     if target and target:FindFirstChild("Humanoid") then
-        target.Humanoid:TakeDamage(5000)
-    end
-end
-
-local function onAttack()
-    if not Player.Character then return end
-    
-    local root = Player.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    for _, v in ipairs(game:GetService("Players"):GetPlayers()) do
-        if v ~= Player and v.Character then
-            local target = v.Character:FindFirstChild("HumanoidRootPart")
-            if target and (root.Position - target.Position).Magnitude <= 20 then
-                dealDamage(v.Character)
-            end
+        -- Метод 1: Через RemoteEvent (надежнее)
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild("DamageEvent")
+        if remote then
+            remote:FireServer(target, 5000)
+        else
+            -- Метод 2: Прямое изменение (если сервер не проверяет)
+            target.Humanoid.Health = target.Humanoid.Health - 5000
         end
     end
 end
 
 ToggleBtn.MouseButton1Click:Connect(function()
     isActive = not isActive
-    
-    if isActive then
-        ToggleBtn.Text = "ВКЛ"
-        ToggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
-        
-        while isActive do
-            onAttack()
-            task.wait(0.2)
+    ToggleBtn.Text = isActive and "ON" or "OFF"
+    ToggleBtn.TextColor3 = isActive and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+end)
+
+-- Главный цикл
+game:GetService("RunService").Heartbeat:Connect(function()
+    if isActive and Player.Character then
+        for _, v in ipairs(game.Players:GetPlayers()) do
+            if v ~= Player and v.Character then
+                dealRealDamage(v.Character)
+            end
         end
-    else
-        ToggleBtn.Text = "ВЫКЛ"
-        ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     end
 end)
-
--- Закрытие при нажатии ESC
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.Escape then
-        ScreenGui:Destroy()
-    end
-end)
-
-print("Compact Damage GUI loaded!")
