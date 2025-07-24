@@ -1,154 +1,185 @@
--- Авто-клик по кнопке возрождения после смерти
+-- Авто-респавн + телепорт к BlackVoiseOne для Delta (Jurassic Blocky)
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local TPService = game:GetService("TeleportService")
 
 -- Настройки
-local AUTO_RESPAWN_ENABLED = false
-local CLICK_POSITION = {
-    x = 0.75, -- 75% ширины экрана (правая половина)
-    y = 0.25  -- 25% высоты экрана (середина верхней половины)
+local AUTO_RESPAWN = false
+local AUTO_TELEPORT = false
+local TARGET_PLAYER = "BlackVoiseOne" -- Игрок, к которому телепортируемся
+local RESPAWN_BUTTON_POS = {
+    x = 0.8, -- 80% ширины экрана (кнопка респавна обычно справа)
+    y = 0.3  -- 30% высоты экрана
 }
 
--- Создаем интерфейс
+-- UI
 local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeltaAutoRespawn"
 ScreenGui.Parent = CoreGui
 
-local MainWindow = Instance.new("Frame")
-MainWindow.Name = "RespawnClicker"
-MainWindow.Parent = ScreenGui
-MainWindow.Size = UDim2.new(0, 250, 0, 100)
-MainWindow.Position = UDim2.new(0.7, 0, 0.5, -50)
-MainWindow.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-MainWindow.Active = true
-MainWindow.Draggable = true
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "Main"
+MainFrame.Parent = ScreenGui
+MainFrame.Size = UDim2.new(0, 300, 0, 180)
+MainFrame.Position = UDim2.new(0.7, 0, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+MainFrame.Active = true
+MainFrame.Draggable = true
 
 -- Заголовок
 local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
-TitleBar.Parent = MainWindow
-TitleBar.Size = UDim2.new(1, 0, 0, 25)
+TitleBar.Parent = MainFrame
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
 TitleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Parent = TitleBar
 Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Text = "AUTO RESPAWN CLICKER"
+Title.Text = "DELTA AUTO-RESPAWN"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Name = "MinimizeBtn"
-MinimizeBtn.Parent = TitleBar
-MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
-MinimizeBtn.Position = UDim2.new(0.7, 0, 0, 0)
-MinimizeBtn.Text = "_"
-MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Name = "CloseBtn"
 CloseBtn.Parent = TitleBar
-CloseBtn.Size = UDim2.new(0, 25, 0, 25)
-CloseBtn.Position = UDim2.new(0.85, 0, 0, 0)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(0.9, 0, 0, 0)
 CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 
--- Основное содержимое
-local Content = Instance.new("Frame")
-Content.Name = "Content"
-Content.Parent = MainWindow
-Content.Size = UDim2.new(1, 0, 1, -25)
-Content.Position = UDim2.new(0, 0, 0, 25)
-Content.BackgroundTransparency = 1
+-- Основные кнопки
+local ToggleRespawnBtn = Instance.new("TextButton")
+ToggleRespawnBtn.Name = "ToggleRespawn"
+ToggleRespawnBtn.Parent = MainFrame
+ToggleRespawnBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleRespawnBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
+ToggleRespawnBtn.Text = "AUTO-RESPAWN: OFF"
+ToggleRespawnBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
+ToggleRespawnBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
--- Кнопка включения
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Parent = Content
-ToggleBtn.Size = UDim2.new(0.9, 0, 0, 40)
-ToggleBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
-ToggleBtn.Text = "AUTO RESPAWN: OFF"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+local ToggleTeleportBtn = Instance.new("TextButton")
+ToggleTeleportBtn.Name = "ToggleTeleport"
+ToggleTeleportBtn.Parent = MainFrame
+ToggleTeleportBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleTeleportBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
+ToggleTeleportBtn.Text = "TELEPORT TO "..TARGET_PLAYER..": OFF"
+ToggleTeleportBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
+ToggleTeleportBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
--- Информация
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Name = "InfoLabel"
-InfoLabel.Parent = Content
-InfoLabel.Size = UDim2.new(0.9, 0, 0, 30)
-InfoLabel.Position = UDim2.new(0.05, 0, 0.6, 0)
-InfoLabel.Text = "Клик в позиции: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
-InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-InfoLabel.BackgroundTransparency = 1
+local TeleportNowBtn = Instance.new("TextButton")
+TeleportNowBtn.Name = "TeleportNow"
+TeleportNowBtn.Parent = MainFrame
+TeleportNowBtn.Size = UDim2.new(0.9, 0, 0, 35)
+TeleportNowBtn.Position = UDim2.new(0.05, 0, 0.7, 0)
+TeleportNowBtn.Text = "TELEPORT NOW"
+TeleportNowBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+TeleportNowBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 80)
 
 -- Стилизация
-local function applyStyles()
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.1, 0)
-    corner.Parent = MainWindow
-    
-    local elements = {ToggleBtn, MinimizeBtn, CloseBtn}
-    
-    for _, element in pairs(elements) do
-        local elementCorner = Instance.new("UICorner")
-        elementCorner.CornerRadius = UDim.new(0.3, 0)
-        elementCorner.Parent = element
-        
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(100, 100, 140)
-        stroke.Thickness = 1
-        stroke.Parent = element
-    end
-end
-applyStyles()
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0.1, 0)
+UICorner.Parent = MainFrame
 
--- Функция клика
-local function clickRespawnButton()
-    local viewportSize = workspace.CurrentCamera.ViewportSize
-    local clickX = viewportSize.X * CLICK_POSITION.x
-    local clickY = viewportSize.Y * CLICK_POSITION.y
+for _, btn in pairs({ToggleRespawnBtn, ToggleTeleportBtn, TeleportNowBtn, CloseBtn}) do
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0.3, 0)
+    btnCorner.Parent = btn
     
-    -- Имитируем клик мышью
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 100, 140)
+    stroke.Thickness = 1.5
+    stroke.Parent = btn
+end
+
+-- Функция клика по кнопке респавна
+local function clickRespawnButton()
+    local viewport = workspace.CurrentCamera.ViewportSize
+    local clickX = viewport.X * RESPAWN_BUTTON_POS.x
+    local clickY = viewport.Y * RESPAWN_BUTTON_POS.y
+    
     UIS:SetMouseLocation(Vector2.new(clickX, clickY))
     task.wait(0.1)
     mouse1click()
-    print("Авто-клик в позиции:", clickX, clickY)
+    print("[Delta] Авто-клик респавна")
 end
 
--- Обработка смерти
+-- Телепорт к игроку
+local function teleportToTarget()
+    local target = nil
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player.Name == TARGET_PLAYER then
+            target = player
+            break
+        end
+    end
+
+    if not target then
+        warn("[Delta] Игрок "..TARGET_PLAYER.." не найден!")
+        return
+    end
+
+    if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local humanoid = Player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            task.wait(0.2)
+            Player.Character:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(3, 0, 3))
+            print("[Delta] Телепортирован к "..TARGET_PLAYER)
+        end
+    else
+        warn("[Delta] Целевой игрок не имеет персонажа!")
+    end
+end
+
+-- Обработчик смерти
 local function onCharacterAdded(character)
-    if AUTO_RESPAWN_ENABLED then
+    if AUTO_RESPAWN then
         character:WaitForChild("Humanoid").Died:Connect(function()
-            task.wait(2) -- Ждем появления экрана смерти
-            clickRespawnButton()
+            task.wait(2.5) -- Ждем появления экрана смерти в Delta
             
-            -- Дополнительный клик через 3 секунды на всякий случай
-            task.wait(3)
-            if not Player.Character then
+            -- Кликаем респавн
+            for _ = 1, 2 do -- Двойной клик для надежности
                 clickRespawnButton()
+                task.wait(0.5)
+            end
+
+            -- Если включена телепортация - ждем возрождения и телепортируемся
+            if AUTO_TELEPORT then
+                Player.CharacterAdded:Wait()
+                task.wait(1.5) -- Даем время на загрузку
+                teleportToTarget()
             end
         end)
     end
 end
 
--- Обработчики событий
-ToggleBtn.MouseButton1Click:Connect(function()
-    AUTO_RESPAWN_ENABLED = not AUTO_RESPAWN_ENABLED
-    ToggleBtn.Text = "AUTO RESPAWN: "..(AUTO_RESPAWN_ENABLED and "ON" or "OFF")
-    ToggleBtn.TextColor3 = AUTO_RESPAWN_ENABLED and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(255, 120, 120)
+-- Обработчики кнопок
+ToggleRespawnBtn.MouseButton1Click:Connect(function()
+    AUTO_RESPAWN = not AUTO_RESPAWN
+    ToggleRespawnBtn.Text = "AUTO-RESPAWN: " .. (AUTO_RESPAWN and "ON" or "OFF")
+    ToggleRespawnBtn.TextColor3 = AUTO_RESPAWN and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(255, 120, 120)
     
-    if AUTO_RESPAWN_ENABLED and Player.Character then
+    if AUTO_RESPAWN and Player.Character then
         onCharacterAdded(Player.Character)
     end
 end)
 
-MinimizeBtn.MouseButton1Click:Connect(function()
-    Content.Visible = not Content.Visible
-    MainWindow.Size = UDim2.new(0, 250, 0, Content.Visible and 100 or 25)
-    MinimizeBtn.Text = Content.Visible and "_" or "+"
+ToggleTeleportBtn.MouseButton1Click:Connect(function()
+    AUTO_TELEPORT = not AUTO_TELEPORT
+    ToggleTeleportBtn.Text = "TELEPORT TO "..TARGET_PLAYER..": " .. (AUTO_TELEPORT and "ON" or "OFF")
+    ToggleTeleportBtn.TextColor3 = AUTO_TELEPORT and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(255, 120, 120)
+end)
+
+TeleportNowBtn.MouseButton1Click:Connect(function()
+    if Player.Character then
+        teleportToTarget()
+    else
+        warn("[Delta] Нет персонажа для телепортации!")
+    end
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
@@ -161,4 +192,4 @@ if Player.Character then
     onCharacterAdded(Player.Character)
 end
 
-print("RespawnClicker loaded! Click position:", CLICK_POSITION.x, CLICK_POSITION.y)
+print("[Delta] Auto-Respawn loaded | Target: "..TARGET_PLAYER)
