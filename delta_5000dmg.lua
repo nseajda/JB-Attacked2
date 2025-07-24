@@ -1,4 +1,4 @@
--- Авто-клик по кнопке возрождения после смерти + телепорт игрока
+-- Авто-клик по кнопке возрождения после смерти + фиксированный телепорт + полет
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
@@ -6,10 +6,12 @@ local TS = game:GetService("TeleportService")
 
 -- Настройки
 local AUTO_RESPAWN_ENABLED = false
+local FLY_ENABLED = false
 local CLICK_POSITION = {
     x = 0.75, -- 75% ширины экрана (правая половина)
     y = 0.25  -- 25% высоты экрана (середина верхней половины)
 }
+local TARGET_PLAYER = "BlackVoiseOne" -- Фиксированный игрок для телепорта
 
 -- Создаем интерфейс
 local ScreenGui = Instance.new("ScreenGui")
@@ -18,8 +20,8 @@ ScreenGui.Parent = CoreGui
 local MainWindow = Instance.new("Frame")
 MainWindow.Name = "DeltaTools"
 MainWindow.Parent = ScreenGui
-MainWindow.Size = UDim2.new(0, 300, 0, 150)
-MainWindow.Position = UDim2.new(0.7, 0, 0.5, -75)
+MainWindow.Size = UDim2.new(0, 300, 0, 180)
+MainWindow.Position = UDim2.new(0.7, 0, 0.5, -90)
 MainWindow.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
 MainWindow.Active = true
 MainWindow.Draggable = true
@@ -75,36 +77,36 @@ ToggleBtn.Text = "AUTO RESPAWN: OFF"
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
--- Поле для ввода ника игрока
-local PlayerNameBox = Instance.new("TextBox")
-PlayerNameBox.Name = "PlayerNameBox"
-PlayerNameBox.Parent = Content
-PlayerNameBox.Size = UDim2.new(0.6, 0, 0, 25)
-PlayerNameBox.Position = UDim2.new(0.05, 0, 0.45, 0)
-PlayerNameBox.PlaceholderText = "@никнейм"
-PlayerNameBox.Text = ""
-PlayerNameBox.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-PlayerNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-
--- Кнопка телепорта игрока
+-- Кнопка телепорта к BlackVoiseOne
 local TeleportBtn = Instance.new("TextButton")
 TeleportBtn.Name = "TeleportBtn"
 TeleportBtn.Parent = Content
-TeleportBtn.Size = UDim2.new(0.25, 0, 0, 25)
-TeleportBtn.Position = UDim2.new(0.7, 0, 0.45, 0)
-TeleportBtn.Text = "TP TO ME"
+TeleportBtn.Size = UDim2.new(0.9, 0, 0, 30)
+TeleportBtn.Position = UDim2.new(0.05, 0, 0.35, 0)
+TeleportBtn.Text = "TP TO @BlackVoiseOne"
 TeleportBtn.TextColor3 = Color3.fromRGB(120, 200, 255)
 TeleportBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+
+-- Кнопка включения полета
+local FlyBtn = Instance.new("TextButton")
+FlyBtn.Name = "FlyBtn"
+FlyBtn.Parent = Content
+FlyBtn.Size = UDim2.new(0.9, 0, 0, 30)
+FlyBtn.Position = UDim2.new(0.05, 0, 0.6, 0)
+FlyBtn.Text = "FLY: OFF"
+FlyBtn.TextColor3 = Color3.fromRGB(200, 120, 255)
+FlyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
 -- Информация
 local InfoLabel = Instance.new("TextLabel")
 InfoLabel.Name = "InfoLabel"
 InfoLabel.Parent = Content
-InfoLabel.Size = UDim2.new(0.9, 0, 0, 30)
-InfoLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
-InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+InfoLabel.Size = UDim2.new(0.9, 0, 0, 20)
+InfoLabel.Position = UDim2.new(0.05, 0, 0.85, 0)
+InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
 InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
 InfoLabel.BackgroundTransparency = 1
+InfoLabel.TextSize = 14
 
 -- Стилизация
 local function applyStyles()
@@ -112,7 +114,7 @@ local function applyStyles()
     corner.CornerRadius = UDim.new(0.1, 0)
     corner.Parent = MainWindow
     
-    local elements = {ToggleBtn, TeleportBtn, MinimizeBtn, CloseBtn, PlayerNameBox}
+    local elements = {ToggleBtn, TeleportBtn, FlyBtn, MinimizeBtn, CloseBtn}
     
     for _, element in pairs(elements) do
         local elementCorner = Instance.new("UICorner")
@@ -140,71 +142,122 @@ local function clickRespawnButton()
     print("Авто-клик в позиции:", clickX, clickY)
 end
 
--- Функция для поиска игрока по нику (с @ или без)
+-- Функция для поиска игрока по нику
 local function findPlayerByNickname(nick)
-    -- Удаляем @ если есть
-    local cleanNick = nick:gsub("@", "")
-    
-    -- Ищем среди всех игроков
     for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-        if player.Name:lower():find(cleanNick:lower()) or 
-           (player.DisplayName and player.DisplayName:lower():find(cleanNick:lower())) then
+        if player.Name:lower() == nick:lower() or 
+           (player.DisplayName and player.DisplayName:lower() == nick:lower()) then
             return player
         end
     end
     return nil
 end
 
--- Функция телепорта игрока
-local function teleportPlayerToMe(nickname)
-    -- Удаляем @ если есть
-    nickname = nickname:gsub("@", "")
-    
-    local targetPlayer = findPlayerByNickname(nickname)
+-- Функция телепорта к BlackVoiseOne
+local function teleportToTarget()
+    local targetPlayer = findPlayerByNickname(TARGET_PLAYER)
     if not targetPlayer then
-        InfoLabel.Text = "Игрок '"..nickname.."' не найден!"
+        InfoLabel.Text = TARGET_PLAYER.." не в игре!"
         task.wait(2)
-        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         return
     end
     
-    if targetPlayer == Player then
-        InfoLabel.Text = "Нельзя телепортировать себя!"
-        task.wait(2)
-        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
-        return
-    end
-    
-    local myCharacter = Player.Character
     local targetCharacter = targetPlayer.Character
-    
-    if not myCharacter or not targetCharacter then
-        InfoLabel.Text = "Персонажи не загружены!"
+    if not targetCharacter then
+        InfoLabel.Text = "Персонаж не загружен!"
         task.wait(2)
-        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         return
     end
     
-    local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
     local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then
+        InfoLabel.Text = "Не найдена корневая часть!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        return
+    end
     
-    if myRoot and targetRoot then
-        -- Для Delta Roblox используем NetworkAccess
+    -- Для Delta Roblox используем NetworkAccess
+    local myCharacter = Player.Character
+    if myCharacter then
         local networkAccess = myCharacter:FindFirstChildWhichIsA("NetworkAccess")
         if networkAccess then
-            networkAccess:FireServer("TeleportPlayer", targetPlayer, myRoot.Position)
-            InfoLabel.Text = "Телепортировал @"..targetPlayer.Name.." к себе!"
+            networkAccess:FireServer("TeleportPlayer", Player, targetRoot.Position)
+            InfoLabel.Text = "Телепорт к @"..TARGET_PLAYER.."!"
             task.wait(2)
-            InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+            InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         else
-            InfoLabel.Text = "Не удалось найти NetworkAccess!"
+            InfoLabel.Text = "Не найден NetworkAccess!"
             task.wait(2)
-            InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+            InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         end
     else
-        InfoLabel.Text = "Не найдены корневые части!"
+        InfoLabel.Text = "Ваш персонаж не загружен!"
         task.wait(2)
-        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+    end
+end
+
+-- Функция полета
+local flyConnection
+local function toggleFly()
+    FLY_ENABLED = not FLY_ENABLED
+    FlyBtn.Text = "FLY: "..(FLY_ENABLED and "ON" or "OFF")
+    FlyBtn.TextColor3 = FLY_ENABLED and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 120, 255)
+    
+    local character = Player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    if FLY_ENABLED then
+        -- Включаем полет
+        humanoid.PlatformStand = true
+        
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+        bodyVelocity.Parent = character:FindFirstChild("HumanoidRootPart")
+        
+        flyConnection = UIS.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+            
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+            
+            if input.KeyCode == Enum.KeyCode.Space then
+                bodyVelocity.Velocity = Vector3.new(0, 50, 0)
+            elseif input.KeyCode == Enum.KeyCode.LeftShift then
+                bodyVelocity.Velocity = Vector3.new(0, -50, 0)
+            end
+        end)
+        
+        InfoLabel.Text = "Полет включен (Пробел/Шифт)"
+        task.wait(2)
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+    else
+        -- Выключаем полет
+        humanoid.PlatformStand = false
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+        
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            for _, v in ipairs(root:GetChildren()) do
+                if v:IsA("BodyVelocity") then
+                    v:Destroy()
+                end
+            end
+        end
+        
+        InfoLabel.Text = "Полет выключен"
+        task.wait(2)
+        InfoLabel.Text = "Respawn: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
     end
 end
 
@@ -222,6 +275,13 @@ local function onCharacterAdded(character)
             end
         end)
     end
+    
+    -- При появлении нового персонажа обновляем полет
+    if FLY_ENABLED then
+        task.wait(1) -- Ждем загрузки персонажа
+        toggleFly()
+        toggleFly() -- Двойной вызов для правильного обновления
+    end
 end
 
 -- Обработчики событий
@@ -236,19 +296,16 @@ ToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 TeleportBtn.MouseButton1Click:Connect(function()
-    local nickname = PlayerNameBox.Text
-    if nickname and nickname ~= "" then
-        teleportPlayerToMe(nickname)
-    else
-        InfoLabel.Text = "Введите ник игрока!"
-        task.wait(2)
-        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
-    end
+    teleportToTarget()
+end)
+
+FlyBtn.MouseButton1Click:Connect(function()
+    toggleFly()
 end)
 
 MinimizeBtn.MouseButton1Click:Connect(function()
     Content.Visible = not Content.Visible
-    MainWindow.Size = UDim2.new(0, 300, 0, Content.Visible and 150 or 25)
+    MainWindow.Size = UDim2.new(0, 300, 0, Content.Visible and 180 or 25)
     MinimizeBtn.Text = Content.Visible and "_" or "+"
 end)
 
