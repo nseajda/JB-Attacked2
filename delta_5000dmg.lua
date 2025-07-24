@@ -1,16 +1,22 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Авто-клик по кнопке возрождения после смерти + телепорт игрока
+local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+local TS = game:GetService("TeleportService")
+
+-- Настройки
+local AUTO_RESPAWN_ENABLED = false
+local CLICK_POSITION = {
+    x = 0.75, -- 75% ширины экрана (правая половина)
+    y = 0.25  -- 25% высоты экрана (середина верхней половины)
+}
 
 -- Создаем интерфейс
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "PlayerTeleporterUI"
 ScreenGui.Parent = CoreGui
 
 local MainWindow = Instance.new("Frame")
-MainWindow.Name = "MainWindow"
+MainWindow.Name = "DeltaTools"
 MainWindow.Parent = ScreenGui
 MainWindow.Size = UDim2.new(0, 300, 0, 150)
 MainWindow.Position = UDim2.new(0.7, 0, 0.5, -75)
@@ -29,15 +35,24 @@ local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Parent = TitleBar
 Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Text = "PLAYER TELEPORTER"
+Title.Text = "DELTA ROBLOX TOOLS"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Name = "MinimizeBtn"
+MinimizeBtn.Parent = TitleBar
+MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+MinimizeBtn.Position = UDim2.new(0.7, 0, 0, 0)
+MinimizeBtn.Text = "_"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Name = "CloseBtn"
 CloseBtn.Parent = TitleBar
 CloseBtn.Size = UDim2.new(0, 25, 0, 25)
-CloseBtn.Position = UDim2.new(0.9, 0, 0, 0)
+CloseBtn.Position = UDim2.new(0.85, 0, 0, 0)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
@@ -50,40 +65,46 @@ Content.Size = UDim2.new(1, 0, 1, -25)
 Content.Position = UDim2.new(0, 0, 0, 25)
 Content.BackgroundTransparency = 1
 
--- Поле ввода
-local PlayerNameInput = Instance.new("TextBox")
-PlayerNameInput.Name = "PlayerNameInput"
-PlayerNameInput.Parent = Content
-PlayerNameInput.Size = UDim2.new(0.9, 0, 0, 30)
-PlayerNameInput.Position = UDim2.new(0.05, 0, 0.1, 0)
-PlayerNameInput.PlaceholderText = "Введите ник игрока"
-PlayerNameInput.Text = ""
-PlayerNameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-PlayerNameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayerNameInput.ClearTextOnFocus = false
+-- Кнопка включения авто-респавна
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Parent = Content
+ToggleBtn.Size = UDim2.new(0.9, 0, 0, 30)
+ToggleBtn.Position = UDim2.new(0.05, 0, 0.1, 0)
+ToggleBtn.Text = "AUTO RESPAWN: OFF"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
--- Кнопка добавления
-local AddButton = Instance.new("TextButton")
-AddButton.Name = "AddButton"
-AddButton.Parent = Content
-AddButton.Size = UDim2.new(0.9, 0, 0, 30)
-AddButton.Position = UDim2.new(0.05, 0, 0.4, 0)
-AddButton.Text = "Добавить кнопку телепортации"
-AddButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AddButton.BackgroundColor3 = Color3.fromRGB(70, 120, 70)
+-- Поле для ввода ника игрока
+local PlayerNameBox = Instance.new("TextBox")
+PlayerNameBox.Name = "PlayerNameBox"
+PlayerNameBox.Parent = Content
+PlayerNameBox.Size = UDim2.new(0.6, 0, 0, 25)
+PlayerNameBox.Position = UDim2.new(0.05, 0, 0.45, 0)
+PlayerNameBox.PlaceholderText = "@никнейм"
+PlayerNameBox.Text = ""
+PlayerNameBox.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+PlayerNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 
--- Кнопка для BlackVoiseOne
-local BlackVoiseButton = Instance.new("TextButton")
-BlackVoiseButton.Name = "BlackVoiseButton"
-BlackVoiseButton.Parent = Content
-BlackVoiseButton.Size = UDim2.new(0.9, 0, 0, 30)
-BlackVoiseButton.Position = UDim2.new(0.05, 0, 0.7, 0)
-BlackVoiseButton.Text = "Телепорт к @BlackVoiseOne"
-BlackVoiseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-BlackVoiseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+-- Кнопка телепорта игрока
+local TeleportBtn = Instance.new("TextButton")
+TeleportBtn.Name = "TeleportBtn"
+TeleportBtn.Parent = Content
+TeleportBtn.Size = UDim2.new(0.25, 0, 0, 25)
+TeleportBtn.Position = UDim2.new(0.7, 0, 0.45, 0)
+TeleportBtn.Text = "TP TO ME"
+TeleportBtn.TextColor3 = Color3.fromRGB(120, 200, 255)
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 
--- Список созданных кнопок
-local createdButtons = {}
+-- Информация
+local InfoLabel = Instance.new("TextLabel")
+InfoLabel.Name = "InfoLabel"
+InfoLabel.Parent = Content
+InfoLabel.Size = UDim2.new(0.9, 0, 0, 30)
+InfoLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+InfoLabel.BackgroundTransparency = 1
 
 -- Стилизация
 local function applyStyles()
@@ -91,7 +112,7 @@ local function applyStyles()
     corner.CornerRadius = UDim.new(0.1, 0)
     corner.Parent = MainWindow
     
-    local elements = {PlayerNameInput, AddButton, BlackVoiseButton, CloseBtn}
+    local elements = {ToggleBtn, TeleportBtn, MinimizeBtn, CloseBtn, PlayerNameBox}
     
     for _, element in pairs(elements) do
         local elementCorner = Instance.new("UICorner")
@@ -106,169 +127,139 @@ local function applyStyles()
 end
 applyStyles()
 
--- Функция телепортации
-local function teleportToPlayer(playerName)
-    local targetPlayer = nil
+-- Функция клика
+local function clickRespawnButton()
+    local viewportSize = workspace.CurrentCamera.ViewportSize
+    local clickX = viewportSize.X * CLICK_POSITION.x
+    local clickY = viewportSize.Y * CLICK_POSITION.y
     
-    -- Ищем игрока среди онлайн
-    for _, player in ipairs(Players:GetPlayers()) do
-        if string.lower(player.Name) == string.lower(playerName) or 
-           string.lower(player.DisplayName) == string.lower(playerName) then
-            targetPlayer = player
-            break
+    -- Имитируем клик мышью
+    UIS:SetMouseLocation(Vector2.new(clickX, clickY))
+    task.wait(0.1)
+    mouse1click()
+    print("Авто-клик в позиции:", clickX, clickY)
+end
+
+-- Функция для поиска игрока по нику (с @ или без)
+local function findPlayerByNickname(nick)
+    -- Удаляем @ если есть
+    local cleanNick = nick:gsub("@", "")
+    
+    -- Ищем среди всех игроков
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player.Name:lower():find(cleanNick:lower()) or 
+           (player.DisplayName and player.DisplayName:lower():find(cleanNick:lower())) then
+            return player
         end
     end
+    return nil
+end
+
+-- Функция телепорта игрока
+local function teleportPlayerToMe(nickname)
+    -- Удаляем @ если есть
+    nickname = nickname:gsub("@", "")
     
+    local targetPlayer = findPlayerByNickname(nickname)
     if not targetPlayer then
-        warn("Игрок " .. playerName .. " не найден в игре!")
+        InfoLabel.Text = "Игрок '"..nickname.."' не найден!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         return
     end
     
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    if targetPlayer == Player then
+        InfoLabel.Text = "Нельзя телепортировать себя!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        return
+    end
     
+    local myCharacter = Player.Character
     local targetCharacter = targetPlayer.Character
-    if not targetCharacter then
-        warn("У игрока " .. playerName .. " нет персонажа!")
+    
+    if not myCharacter or not targetCharacter then
+        InfoLabel.Text = "Персонажи не загружены!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
         return
     end
     
-    local targetRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
-    if not targetRootPart then
-        warn("Не удалось найти HumanoidRootPart у игрока " .. playerName)
-        return
+    local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+    local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+    
+    if myRoot and targetRoot then
+        -- Для Delta Roblox используем NetworkAccess
+        local networkAccess = myCharacter:FindFirstChildWhichIsA("NetworkAccess")
+        if networkAccess then
+            networkAccess:FireServer("TeleportPlayer", targetPlayer, myRoot.Position)
+            InfoLabel.Text = "Телепортировал @"..targetPlayer.Name.." к себе!"
+            task.wait(2)
+            InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        else
+            InfoLabel.Text = "Не удалось найти NetworkAccess!"
+            task.wait(2)
+            InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+        end
+    else
+        InfoLabel.Text = "Не найдены корневые части!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
     end
-    
-    -- Плавная телепортация
-    local tweenInfo = TweenInfo.new(
-        0.5, -- Время
-        Enum.EasingStyle.Quad, -- Стиль
-        Enum.EasingDirection.Out, -- Направление
-        0, -- Повторения
-        false, -- Обратно
-        0 -- Задержка
-    )
-    
-    local tween = TweenService:Create(
-        humanoidRootPart,
-        tweenInfo,
-        {CFrame = targetRootPart.CFrame * CFrame.new(0, 0, 3)}
-    )
-    
-    tween:Play()
-    print("Телепортация к " .. playerName .. " выполнена!")
 end
 
--- Функция создания новой кнопки
-local function createTeleportButton(playerName)
-    -- Проверяем, есть ли уже кнопка для этого игрока
-    for _, buttonInfo in pairs(createdButtons) do
-        if buttonInfo.playerName == playerName then
-            warn("Кнопка для игрока " .. playerName .. " уже существует!")
-            return
-        end
-    end
-    
-    -- Создаем новую кнопку
-    local newButton = Instance.new("TextButton")
-    newButton.Name = "TeleportTo_" .. playerName
-    newButton.Parent = Content
-    newButton.Size = UDim2.new(0.9, 0, 0, 30)
-    newButton.Text = "Телепорт к " .. playerName
-    newButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    newButton.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
-    
-    -- Кнопка удаления
-    local deleteButton = Instance.new("TextButton")
-    deleteButton.Name = "DeleteButton"
-    deleteButton.Parent = newButton
-    deleteButton.Size = UDim2.new(0.2, 0, 1, 0)
-    deleteButton.Position = UDim2.new(0.8, 0, 0, 0)
-    deleteButton.Text = "X"
-    deleteButton.TextColor3 = Color3.fromRGB(255, 150, 150)
-    deleteButton.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
-    
-    -- Применяем стили
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.3, 0)
-    corner.Parent = newButton
-    
-    local deleteCorner = Instance.new("UICorner")
-    deleteCorner.CornerRadius = UDim.new(0.3, 0)
-    deleteCorner.Parent = deleteButton
-    
-    -- Сохраняем информацию о кнопке
-    local buttonInfo = {
-        button = newButton,
-        deleteButton = deleteButton,
-        playerName = playerName
-    }
-    table.insert(createdButtons, buttonInfo)
-    
-    -- Обработчики событий
-    newButton.MouseButton1Click:Connect(function()
-        teleportToPlayer(playerName)
-    end)
-    
-    deleteButton.MouseButton1Click:Connect(function()
-        newButton:Destroy()
-        for i, info in ipairs(createdButtons) do
-            if info.button == newButton then
-                table.remove(createdButtons, i)
-                break
+-- Обработка смерти
+local function onCharacterAdded(character)
+    if AUTO_RESPAWN_ENABLED then
+        character:WaitForChild("Humanoid").Died:Connect(function()
+            task.wait(2) -- Ждем появления экрана смерти
+            clickRespawnButton()
+            
+            -- Дополнительный клик через 3 секунды на всякий случай
+            task.wait(3)
+            if not Player.Character then
+                clickRespawnButton()
             end
-        end
-        updateButtonPositions()
-    end)
-    
-    -- Обновляем позиции всех кнопок
-    updateButtonPositions()
-end
-
--- Функция обновления позиций кнопок
-local function updateButtonPositions()
-    local startY = 0.7
-    local buttonHeight = 0.3
-    local spacing = 0.05
-    
-    -- Позиция кнопки BlackVoiseOne
-    BlackVoiseButton.Position = UDim2.new(0.05, 0, startY, 0)
-    startY = startY + buttonHeight + spacing
-    
-    -- Позиции созданных кнопок
-    for i, buttonInfo in ipairs(createdButtons) do
-        buttonInfo.button.Position = UDim2.new(0.05, 0, startY, 0)
-        startY = startY + buttonHeight + spacing
+        end)
     end
-    
-    -- Обновляем размер окна
-    local totalHeight = 25 + 70 + (startY * 100) -- 25 - заголовок, 70 - фиксированные элементы
-    MainWindow.Size = UDim2.new(0, 300, 0, math.max(150, totalHeight))
 end
 
 -- Обработчики событий
-AddButton.MouseButton1Click:Connect(function()
-    local playerName = PlayerNameInput.Text
-    if playerName and playerName ~= "" then
-        createTeleportButton(playerName)
-        PlayerNameInput.Text = ""
-    else
-        warn("Введите ник игрока!")
+ToggleBtn.MouseButton1Click:Connect(function()
+    AUTO_RESPAWN_ENABLED = not AUTO_RESPAWN_ENABLED
+    ToggleBtn.Text = "AUTO RESPAWN: "..(AUTO_RESPAWN_ENABLED and "ON" or "OFF")
+    ToggleBtn.TextColor3 = AUTO_RESPAWN_ENABLED and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(255, 120, 120)
+    
+    if AUTO_RESPAWN_ENABLED and Player.Character then
+        onCharacterAdded(Player.Character)
     end
 end)
 
-BlackVoiseButton.MouseButton1Click:Connect(function()
-    teleportToPlayer("BlackVoiseOne")
+TeleportBtn.MouseButton1Click:Connect(function()
+    local nickname = PlayerNameBox.Text
+    if nickname and nickname ~= "" then
+        teleportPlayerToMe(nickname)
+    else
+        InfoLabel.Text = "Введите ник игрока!"
+        task.wait(2)
+        InfoLabel.Text = "Respawn click: X-"..CLICK_POSITION.x.." Y-"..CLICK_POSITION.y
+    end
+end)
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    Content.Visible = not Content.Visible
+    MainWindow.Size = UDim2.new(0, 300, 0, Content.Visible and 150 or 25)
+    MinimizeBtn.Text = Content.Visible and "_" or "+"
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
-PlayerNameInput.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        AddButton:Activate()
-    end
-end)
+-- Инициализация
+Player.CharacterAdded:Connect(onCharacterAdded)
+if Player.Character then
+    onCharacterAdded(Player.Character)
+end
 
-print("Player Teleporter loaded! Use the UI to teleport to players.")
+print("Delta Roblox Tools loaded!")
